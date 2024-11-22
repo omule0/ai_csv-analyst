@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FileUpload } from '@/components/ui/FileUpload';
 import { DataTable } from '@/components/ui/DataTable';
 import { QuickStats } from '@/components/ui/QuickStats';
+import { AIInsights } from '@/components/ui/AIInsights';
 
 export default function Home() {
   const [fileData, setFileData] = useState(null);
@@ -56,7 +57,10 @@ export default function Home() {
             {/* AI Analysis */}
             <div className="border rounded-lg p-4">
               <h3 className="text-lg font-semibold mb-3">AI Insights</h3>
-              {/* AI-generated analysis will go here */}
+              <AIInsights 
+                data={fileData.data}
+                columns={fileData.columns}
+              />
             </div>
           </section>
         )}
