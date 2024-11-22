@@ -5,6 +5,7 @@ import { FileUpload } from '@/components/ui/FileUpload';
 import { DataTable } from '@/components/ui/DataTable';
 import { QuickStats } from '@/components/ui/QuickStats';
 import { AIInsights } from '@/components/ui/AIInsights';
+import { DataVisualizer } from '@/components/ui/DataVisualizer';
 
 export default function Home() {
   const [fileData, setFileData] = useState(null);
@@ -51,7 +52,10 @@ export default function Home() {
             {/* Charts Section */}
             <div className="border rounded-lg p-4">
               <h3 className="text-lg font-semibold mb-3">Visualizations</h3>
-              {/* Charts will go here */}
+              <DataVisualizer 
+                data={fileData.data}
+                columns={fileData.columns}
+              />
             </div>
 
             {/* AI Analysis */}
