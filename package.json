@@ -9,18 +9,29 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^1.0.5",
+    "@radix-ui/react-scroll-area": "^1.2.1",
+    "@radix-ui/react-slot": "^1.1.0",
     "@shadcn/ui": "^0.0.4",
     "@tanstack/react-table": "^8.20.5",
+    "ai": "^4.0.8",
+    "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "langsmith": "^0.2.7",
+    "lucide-react": "^0.460.0",
     "next": "15.0.3",
+    "next-themes": "^0.4.3",
     "openai": "^4.73.0",
+    "papaparse": "^5.4.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.1",
     "recharts": "^2.13.3",
+    "sonner": "^1.7.0",
     "tailwind-merge": "^2.5.4",
-    "xlsx": "^0.18.5"
+    "tailwindcss-animate": "^1.0.7",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "eslint": "^8",
