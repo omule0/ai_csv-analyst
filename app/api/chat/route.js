@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { convertToCoreMessages, streamText, generateObject } from 'ai';
+import { convertToCoreMessages, streamText } from 'ai';
 import { z } from 'zod';
 
 // Define schema for structured responses
@@ -21,32 +21,34 @@ const responseSchema = z.object({
   }).optional(),
 });
 
-export const maxDuration = 30;
+export const dynamic = 'force-dynamic';
+export const maxDuration = 120; // 2 minutes
 
 export async function POST(req) {
   const body = await req.json();
   const { messages } = body;
   const csvData = body.csvData;
 
+  // Stricter data validation
+  if (!csvData || !Array.isArray(csvData) || csvData.length === 0) {
+    return new Response(
+      JSON.stringify({
+        type: 'text',
+        content: 'No data available to analyze. Please provide valid CSV data.'
+      }),
+      { status: 400 }
+    );
+  }
+
   console.log('API Route Received Request:', {
     hasMessages: !!messages,
     messageCount: messages?.length,
     hasCsvData: !!csvData,
     csvDataSize: csvData?.length,
-    firstRow: csvData?.[0],
   });
 
   // Get column information
   const columns = csvData && csvData[0] ? Object.keys(csvData[0]) : [];
-  
-  // Create a data summary with all fields from the CSV
-  const dataSummary = csvData ? csvData.map(row => {
-    const rowSummary = {};
-    columns.forEach(col => {
-      rowSummary[col] = row[col];
-    });
-    return rowSummary;
-  }) : [];
 
   // Get data types for each column
   const columnTypes = {};
@@ -66,22 +68,42 @@ export async function POST(req) {
     }`;
   }).join('\n');
 
-  // Create a system message that adapts to the CSV structure
+  // Prepare data summary with actual values
+  const dataSummary = {};
+  columns.forEach(col => {
+    const values = csvData.map(row => row[col]).filter(v => v !== null && v !== undefined);
+    dataSummary[col] = {
+      totalRecords: values.length,
+      uniqueValues: [...new Set(values)],
+      sampleValues: values.slice(0, 5), // Provide actual samples
+      type: columnTypes[col]
+    };
+  });
+
+  // Enhanced system message with strict data boundaries
   const systemMessage = `You are a helpful AI assistant specialized in analyzing CSV data.
-  You have access to a dataset with ${csvData?.length || 0} records containing the following columns:
-  
+  You have access to a dataset with EXACTLY ${csvData.length} records containing the following columns:
+
   ${columnDescriptions}
 
-  Sample of the data:
-  ${JSON.stringify(dataSummary.slice(0, 2), null, 2)}
+  CRITICAL INSTRUCTIONS:
+  1. You MUST ONLY use the exact values present in the dataset.
+  2. For each response:
+     - Include specific values from the dataset
+     - Reference actual counts and numbers
+     - If asked about data not in the dataset, respond with "That information is not available in the dataset"
+  3. NEVER extrapolate or estimate values outside the dataset
+  4. NEVER create sample or example data
+  5. If unsure about any values, respond with "I need to verify the exact values in the dataset"
 
-  When analyzing this data, you can:
-  - List and summarize records
-  - Analyze patterns and trends
-  - Compare different entries
-  - Answer questions about specific fields
-  - Provide statistical insights
-  - Find unique or notable entries
+  Available Data Summary:
+  ${JSON.stringify(dataSummary, null, 2)}
+
+  IMPORTANT: 
+  - ONLY use the data provided in the CSV file. DO NOT make up or assume any data.
+  - If you cannot answer a question using the available data, respond with "I cannot answer this question with the available data."
+  - Always reference specific values from the dataset in your responses.
+  - When showing trends or patterns, use actual counts and values from the data.
 
   Format the results as either tables or charts:
   - Use tables for: displaying raw data, comparing specific records, showing detailed information
@@ -153,46 +175,24 @@ export async function POST(req) {
       ...convertToCoreMessages(messages)
     ];
 
-    // Create dynamic summary based on data types
-    const dataSummaryByType = {};
-    columns.forEach(col => {
-      if (columnTypes[col] === 'number') {
-        const values = csvData?.map(row => parseFloat(row[col])).filter(n => !isNaN(n));
-        dataSummaryByType[col] = {
-          min: Math.min(...values),
-          max: Math.max(...values),
-          avg: values.reduce((a, b) => a + b, 0) / values.length
-        };
-      } else {
-        const values = csvData?.map(row => row[col]);
-        dataSummaryByType[col] = {
-          uniqueValues: [...new Set(values)].length,
-          mostCommon: values.reduce((acc, val) => {
-            acc[val] = (acc[val] || 0) + 1;
-            return acc;
-          }, {})
-        };
-      }
-    });
-
     const result = await streamText({
       model: openai('gpt-4o-mini'),
       system: systemMessage,
       messages: enhancedMessages,
       schema: responseSchema,
+      temperature: 0, // Set to 0 for maximum determinism
       context: {
-        csvData: dataSummary,
-        summary: {
-          totalRecords: csvData?.length || 0,
-          columns: columns,
-          columnTypes: columnTypes,
-          statistics: dataSummaryByType
-        }
+        dataSummary,
+        csvData,
+        columns,
+        columnTypes
       }
     });
 
     console.log('Stream response created successfully');
     return result.toDataStreamResponse();
+   
+
   } catch (error) {
     console.error('Error in API route:', error);
     throw error;
