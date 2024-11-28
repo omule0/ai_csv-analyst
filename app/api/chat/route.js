@@ -167,7 +167,7 @@ export async function POST(req) {
     // Add the data context as the first assistant message
     const contextMessage = {
       role: 'assistant',
-      content: `I have loaded the CSV data with ${csvData?.length} records. The dataset contains information about ${columns.join(', ')}. How can I help you analyze this information?`
+      content: `I have loaded the CSV data with ${csvData?.length} records. The dataset contains information about ${columns.join(', ')}. Here is all the data: ${JSON.stringify(csvData)}. How can I help you analyze this information?`
     };
 
     const enhancedMessages = [
@@ -180,13 +180,7 @@ export async function POST(req) {
       system: systemMessage,
       messages: enhancedMessages,
       schema: responseSchema,
-      temperature: 0, // Set to 0 for maximum determinism
-      context: {
-        dataSummary,
-        csvData,
-        columns,
-        columnTypes
-      }
+      temperature: 0,
     });
 
     console.log('Stream response created successfully');
