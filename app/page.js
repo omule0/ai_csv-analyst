@@ -3,6 +3,63 @@
 import { useChat } from 'ai/react';
 import { useState, useCallback } from 'react';
 import Papa from 'papaparse';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Bar, Line, Pie } from 'recharts';
+
+function DataTable({ headers, rows }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {headers.map((header) => (
+            <TableHead key={header}>{header}</TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row, i) => (
+          <TableRow key={i}>
+            {headers.map((header) => (
+              <TableCell key={header}>{row[header]}</TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function DataChart({ config, data }) {
+  const ChartComponent = {
+    bar: Bar,
+    line: Line,
+    pie: Pie,
+  }[config.type];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{config.title}</CardTitle>
+      </CardHeader>
+      <CardContent className="h-[300px]">
+        <ChartComponent
+          data={data}
+          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        >
+          {/* Add chart configuration based on type */}
+        </ChartComponent>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Home() {
   // Initialize chat with custom configuration
@@ -86,7 +143,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto p-4">
+    <div className="flex flex-col h-screen max-w-5xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">CSV Analyst Assistant</h1>
       
       {/* File upload */}
@@ -109,25 +166,58 @@ export default function Home() {
       
       {/* Messages container */}
       <div className="flex-1 overflow-y-auto mb-4 space-y-4">
-        {messages.map(message => (
-          <div 
-            key={message.id} 
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
+        {messages.map(message => {
+          // Try to parse the message content as JSON
+          let structuredContent;
+          try {
+            structuredContent = JSON.parse(message.content);
+          } catch (e) {
+            structuredContent = { type: 'text', content: message.content };
+          }
+
+          return (
             <div 
-              className={`rounded-lg px-4 py-2 max-w-[80%] ${
-                message.role === 'user' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-100 text-gray-900'
-              }`}
+              key={message.id} 
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className="font-medium mb-1">
-                {message.role === 'user' ? 'You' : 'AI'}
+              <div 
+                className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                  message.role === 'user' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                <div className="font-medium mb-1">
+                  {message.role === 'user' ? 'You' : 'AI'}
+                </div>
+                
+                {structuredContent.type === 'text' && (
+                  <div className="whitespace-pre-wrap">{structuredContent.content}</div>
+                )}
+                
+                {structuredContent.type === 'table' && structuredContent.data && (
+                  <div className="mt-4">
+                    <p className="mb-2">{structuredContent.content}</p>
+                    <DataTable 
+                      headers={structuredContent.data.headers}
+                      rows={structuredContent.data.rows}
+                    />
+                  </div>
+                )}
+                
+                {structuredContent.type === 'chart' && structuredContent.data && (
+                  <div className="mt-4">
+                    <p className="mb-2">{structuredContent.content}</p>
+                    <DataChart 
+                      config={structuredContent.data.chartConfig}
+                      data={structuredContent.data.rows}
+                    />
+                  </div>
+                )}
               </div>
-              <div className="whitespace-pre-wrap">{message.content}</div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Input form */}

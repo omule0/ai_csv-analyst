@@ -1,5 +1,22 @@
 import { openai } from '@ai-sdk/openai';
-import { convertToCoreMessages, streamText } from 'ai';
+import { convertToCoreMessages, streamText, generateObject } from 'ai';
+import { z } from 'zod';
+
+// Define schema for structured responses
+const responseSchema = z.object({
+  type: z.enum(['text', 'table', 'chart']),
+  content: z.string(),
+  data: z.object({
+    headers: z.array(z.string()).optional(),
+    rows: z.array(z.record(z.any())).optional(),
+    chartConfig: z.object({
+      type: z.enum(['bar', 'line', 'pie']).optional(),
+      xAxis: z.string().optional(),
+      yAxis: z.array(z.string()).optional(),
+      title: z.string().optional(),
+    }).optional(),
+  }).optional(),
+});
 
 export const maxDuration = 30;
 
@@ -47,9 +64,9 @@ export async function POST(req) {
   }).join('\n');
 
   // Create a system message that adapts to the CSV structure
-  const systemMessage = `You are a helpful AI assistant specialized in analyzing CSV data. 
+  const systemMessage = `You are a helpful AI assistant specialized in analyzing CSV data.
   You have access to a dataset with ${csvData?.length || 0} records containing the following columns:
-
+  
   ${columnDescriptions}
 
   Sample of the data:
@@ -62,9 +79,51 @@ export async function POST(req) {
   - Answer questions about specific fields
   - Provide statistical insights
   - Find unique or notable entries
+
+  Format the results as either tables or charts:
+  - Use tables for: displaying raw data, comparing specific records, showing detailed information
+  - Use charts for: trends over time, distributions, comparisons between categories, showing patterns
+  - Use text for: summaries, explanations, and analysis that doesn't require visual representation
+
+  When responding, use the following formats:
   
-  Always provide clear, concise responses using the specific data provided above.
-  If asked about specific columns, use the exact column names as shown above.`;
+  1. For tabular data:
+  {
+    "type": "table",
+    "content": "Here's the data you requested...",
+    "data": {
+      "headers": ["column1", "column2"],
+      "rows": [{"column1": "value1", "column2": "value2"}]
+    }
+  }
+
+  2. For charts:
+  {
+    "type": "chart",
+    "content": "Here's a visualization of...",
+    "data": {
+      "chartConfig": {
+        "type": "bar",  // Use bar for categories, line for trends, pie for proportions
+        "xAxis": "category",
+        "yAxis": ["value"],
+        "title": "Chart Title"
+      }
+    }
+  }
+
+  3. For regular text:
+  {
+    "type": "text",
+    "content": "Your text response here"
+  }
+
+  Always structure your response according to these formats and use the exact column names as shown above.
+  Provide clear, concise responses using the specific data provided.
+  
+  Choose the most appropriate visualization based on the question:
+  - For "show me", "list", or "what are" questions -> typically use tables
+  - For "trend", "compare", or "distribution" questions -> typically use charts
+  - For "analyze", "explain", or "why" questions -> typically use text with supporting visuals`;
 
   try {
     console.log('Preparing to stream response with context:', {
@@ -109,6 +168,7 @@ export async function POST(req) {
       model: openai('gpt-4o-mini'),
       system: systemMessage,
       messages: enhancedMessages,
+      schema: responseSchema,
       context: {
         csvData: dataSummary,
         summary: {
