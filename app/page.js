@@ -19,6 +19,9 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer
 } from 'recharts';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 function DataTable({ headers, rows }) {
   return (
@@ -249,7 +252,31 @@ export default function Home() {
                 </div>
                 
                 {structuredContent.type === 'text' && (
-                  <div className="whitespace-pre-wrap">{structuredContent.content}</div>
+                  <div className="whitespace-pre-wrap">
+                    <ReactMarkdown
+                      components={{
+                        code({node, inline, className, children, ...props}) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          return !inline && match ? (
+                            <SyntaxHighlighter
+                              {...props}
+                              style={tomorrow}
+                              language={match[1]}
+                              PreTag="div"
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          ) : (
+                            <code {...props} className={className}>
+                              {children}
+                            </code>
+                          );
+                        }
+                      }}
+                    >
+                      {structuredContent.content}
+                    </ReactMarkdown>
+                  </div>
                 )}
                 
                 {structuredContent.type === 'table' && structuredContent.data && (
