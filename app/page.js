@@ -12,7 +12,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bar, Line, Pie } from 'recharts';
+import {
+  BarChart, Bar as RechartsBar,
+  LineChart, Line as RechartsLine,
+  PieChart, Pie as RechartsPie,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 function DataTable({ headers, rows }) {
   return (
@@ -38,24 +44,75 @@ function DataTable({ headers, rows }) {
 }
 
 function DataChart({ config, data }) {
-  const ChartComponent = {
-    bar: Bar,
-    line: Line,
-    pie: Pie,
+  if (!config || !data) return null;
+
+  const ChartWrapper = {
+    bar: BarChart,
+    line: LineChart,
+    pie: PieChart
   }[config.type];
+
+  const DataComponent = {
+    bar: RechartsBar,
+    line: RechartsLine,
+    pie: RechartsPie
+  }[config.type];
+
+  if (config.type === 'pie') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{config.title}</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <RechartsPie
+                data={data}
+                dataKey={config.yAxis[0]}
+                nameKey={config.xAxis}
+                cx="50%"
+                cy="50%"
+                outerRadius={80}
+                fill="#8884d8"
+                label
+              />
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{config.title}</CardTitle>
       </CardHeader>
-      <CardContent className="h-[300px]">
-        <ChartComponent
-          data={data}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          {/* Add chart configuration based on type */}
-        </ChartComponent>
+      <CardContent className="h-[400px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <ChartWrapper
+            data={data}
+            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey={config.xAxis} />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            {config.yAxis.map((axis, index) => (
+              <DataComponent
+                key={axis}
+                type="monotone"
+                dataKey={axis}
+                stroke={`#${Math.floor(Math.random()*16777215).toString(16)}`}
+                fill={`#${Math.floor(Math.random()*16777215).toString(16)}`}
+              />
+            ))}
+          </ChartWrapper>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   );

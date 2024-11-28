@@ -14,6 +14,9 @@ const responseSchema = z.object({
       xAxis: z.string().optional(),
       yAxis: z.array(z.string()).optional(),
       title: z.string().optional(),
+      stacked: z.boolean().optional(),
+      percentage: z.boolean().optional(),
+      layout: z.enum(['vertical', 'horizontal']).optional(),
     }).optional(),
   }).optional(),
 });
@@ -103,11 +106,19 @@ export async function POST(req) {
     "content": "Here's a visualization of...",
     "data": {
       "chartConfig": {
-        "type": "bar",  // Use bar for categories, line for trends, pie for proportions
-        "xAxis": "category",
-        "yAxis": ["value"],
-        "title": "Chart Title"
-      }
+        "type": "bar",  // "bar" for categories, "line" for trends, "pie" for proportions
+        "xAxis": "category_column_name",  // The column to use for X-axis
+        "yAxis": ["value_column_name"],   // Array of columns to plot on Y-axis
+        "title": "Chart Title",
+        "stacked": false,                 // Optional: stack multiple bars
+        "percentage": false,              // Optional: show as percentages
+        "layout": "vertical"              // Optional: "vertical" or "horizontal"
+      },
+      "rows": [
+        // Transformed data for the chart
+        { "category_column_name": "value1", "value_column_name": 123 },
+        { "category_column_name": "value2", "value_column_name": 456 }
+      ]
     }
   }
 
